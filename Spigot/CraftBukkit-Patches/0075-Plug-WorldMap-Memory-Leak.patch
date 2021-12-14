@@ -1,0 +1,43 @@
+From 03b43cc4b269093a789088e6bc6bc4b2d8413a64 Mon Sep 17 00:00:00 2001
+From: md_5 <git@md-5.net>
+Date: Fri, 8 Aug 2014 19:57:03 +1000
+Subject: [PATCH] Plug WorldMap Memory Leak
+
+
+diff --git a/src/main/java/net/minecraft/server/level/WorldServer.java b/src/main/java/net/minecraft/server/level/WorldServer.java
+index cf302328e..d86e64f5b 100644
+--- a/src/main/java/net/minecraft/server/level/WorldServer.java
++++ b/src/main/java/net/minecraft/server/level/WorldServer.java
+@@ -1914,6 +1914,29 @@ public class WorldServer extends World implements GeneratorAccessSeed {
+ 
+         public void onTrackingEnd(Entity entity) {
+             org.spigotmc.AsyncCatcher.catchOp("entity unregister"); // Spigot
++            // Spigot start
++            if ( entity instanceof EntityHuman )
++            {
++                getServer().levels.values().stream().map( WorldServer::getDataStorage ).forEach( (worldData) ->
++                {
++                    for (Object o : worldData.cache.values() )
++                    {
++                        if ( o instanceof WorldMap )
++                        {
++                            WorldMap map = (WorldMap) o;
++                            map.carriedByPlayers.remove( (EntityHuman) entity );
++                            for ( Iterator<WorldMap.WorldMapHumanTracker> iter = (Iterator<WorldMap.WorldMapHumanTracker>) map.carriedBy.iterator(); iter.hasNext(); )
++                            {
++                                if ( iter.next().player == entity )
++                                {
++                                    iter.remove();
++                                }
++                            }
++                        }
++                    }
++                } );
++            }
++            // Spigot end
+             // Spigot Start
+             if (entity.getBukkitEntity() instanceof org.bukkit.inventory.InventoryHolder) {
+                 for (org.bukkit.entity.HumanEntity h : Lists.newArrayList(((org.bukkit.inventory.InventoryHolder) entity.getBukkitEntity()).getInventory().getViewers())) {
+-- 
+2.25.1
+
